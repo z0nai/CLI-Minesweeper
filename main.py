@@ -140,10 +140,9 @@ def show(*, operator: str, y: int, x: int, recursive=True) -> str:
             if x > 1: left_right.add(-1)
             check = {(y, x) for y in top_bottom for x in left_right}
             check.remove((0, 0))
-            for dy, dx in check:
-                ny, nx = y + dy, x + dx
-                show(operator='o', y=ny, x=nx, recursive=False)
-            return 'Game'
+            showed = [show(operator='o', y=dy + y, x=dx + x, recursive=False) for dy, dx in check]
+            return 'lost' if 'lost' in showed else 'Game'
+            # bug with opening numbers around opened number
         is_shown[y][x] = True
 
 
@@ -159,7 +158,6 @@ def show(*, operator: str, y: int, x: int, recursive=True) -> str:
             is_shown[y][x] = False
             mines_left += 1
             pos_of_flags.remove((y, x))
-
     return 'Game'
 
 
@@ -187,7 +185,7 @@ while status == 'Game':
     if len(cmd) == 3:
         op, x, y = cmd[0], int(cmd[1]), int(cmd[2])
     while len(cmd) != 3 or not 0 < x < board_width or not 0 < y < board_height:
-        cmd = input('Введите верную команду\no/f X Y\n').split()
+        cmd = input('Enter the correct command\no/f X Y\n').split()
         if len(cmd) == 3:
             op, x, y = cmd[0], int(cmd[1]), int(cmd[2])
 
@@ -195,6 +193,11 @@ while status == 'Game':
 
     if pos_of_flags == pos_of_mines:
         status = 'won'
+
+if status == 'lost':
+    for mine_y, mine_x in pos_of_mines:
+        current_pool[mine_y][mine_x] = 'x'
+        is_shown[mine_y][mine_x] = True
 clear()
 print_pool = color_board(board=current_pool)
 print_board(board=print_pool)
