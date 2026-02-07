@@ -27,25 +27,25 @@ board_height = int(input('Enter board height: '))
 board_mines = int(input('Enter mines: '))
 
 cmd = list(map(int, input("Enter your first step:\n").split()))
-start_time = time()
-pos_of_mines = set()
-pos_of_flags = set()
 
-
-def generate_board(*, width: int, height: int, mines: int, click: list) -> list:
-    global pos_of_mines
-    check = [(-1, -1), (-1, 0), (-1, 1),
-             (0, -1), (0, 0), (0, 1),
-             (1, -1), (1, 0), (1, 1)]
-    board = [[0 for _ in range(width + 2)] for _ in range(height + 2)]
-    mine_check = [(click[1] + dy, click[0] + dx) for dy, dx in check]
+def generate_mines(*, width: int, height: int, mines: int, click: list) -> set:
+    pos_of_mines = set()
+    check = [(y + click[1], x + click[0]) for y in range(-1, 2) for x in range(-1, 2)]
     while len(pos_of_mines) != mines:
         mine_y = randint(1, height)
         mine_x = randint(1, width)
-        if not (mine_y, mine_x) in mine_check:
+        if not (mine_y, mine_x) in check:
             pos_of_mines.add((mine_y, mine_x))
-    check.remove((0, 0))
-    for mine_y, mine_x in pos_of_mines:
+    return pos_of_mines
+
+
+def generate_board(*, width: int, height: int, mines: set) -> list:
+    check = [(-1, -1), (-1, 0), (-1, 1),
+             (0, -1), (0, 1),
+             (1, -1), (1, 0), (1, 1)]
+    board = [[0 for _ in range(width + 2)] for _ in range(height + 2)]
+
+    for mine_y, mine_x in mines:
         board[mine_y][mine_x] = 'x'
         for y_check, x_check in check:
             if board[mine_y + y_check][mine_x + x_check] != 'x':
@@ -104,7 +104,7 @@ def generate_groups(*, board: list) -> list:
 def print_board(*, board: list) -> None:
     global board_width, board_height, is_shown, mines_left, start_time
     clear()
-    print('  ', *range(1, 10), sep='   ', end='  ')
+    print('  ', *range(1, min(board_width + 1, 10)), sep='   ', end='  ')
     print(*range(10, board_width + 1), sep='  ')
     for show_y in range(1, board_height + 1):
         print((' ' if show_y < 10 else '') + str(show_y), end='  ')
@@ -115,7 +115,7 @@ def print_board(*, board: list) -> None:
                 print(Back.LIGHTBLACK_EX + '  ', end='  ')
         print()
     print(f'mines: {mines_left}')
-    print(f'time:  {(time() - start_time):.0f}')
+    print(f'time: {(time() - start_time):.0f}s')
 
 
 def show(*, operator: str, y: int, x: int, recursive=True) -> str:
@@ -160,8 +160,10 @@ def show(*, operator: str, y: int, x: int, recursive=True) -> str:
             pos_of_flags.remove((y, x))
     return 'Game'
 
-
-pool = generate_board(width=board_width, height=board_height, mines=board_mines, click=cmd)
+pos_of_mines = generate_mines(width=board_width, height=board_height, mines=board_mines, click=cmd)
+pool = generate_board(width=board_width, height=board_height, mines=pos_of_mines)
+start_time = time()
+pos_of_flags=set()
 groups = generate_groups(board=pool)
 is_shown = [[False for _ in range(board_width + 2)] for _ in range(board_height + 2)]
 current_pool = deepcopy(pool)
@@ -184,7 +186,7 @@ while status == 'Game':
     cmd = input().split()
     if len(cmd) == 3:
         op, x, y = cmd[0], int(cmd[1]), int(cmd[2])
-    while len(cmd) != 3 or not 0 < x < board_width or not 0 < y < board_height:
+    while len(cmd) != 3 or not 0 < x < board_width + 1 or not 0 < y < board_height + 1:
         cmd = input('Enter the correct command\no/f X Y\n').split()
         if len(cmd) == 3:
             op, x, y = cmd[0], int(cmd[1]), int(cmd[2])
@@ -195,14 +197,18 @@ while status == 'Game':
         status = 'won'
 
 if status == 'lost':
+    for flag_y, flag_x in pos_of_flags:
+        current_pool[flag_y][flag_x] = pool[flag_y][flag_x]
+        is_shown[flag_y][flag_x] = True
     for mine_y, mine_x in pos_of_mines:
         current_pool[mine_y][mine_x] = 'x'
         is_shown[mine_y][mine_x] = True
-clear()
+    for flag_y, flag_x in pos_of_flags.intersection(pos_of_mines):
+        current_pool[flag_y][flag_x] = 'f'
+
 print_pool = color_board(board=current_pool)
 print_board(board=print_pool)
-print()
 print('You', status)
-print(f'Your time: {(time() - start_time):.0f}')
 input()
+
 # add OOP and arrrows support
